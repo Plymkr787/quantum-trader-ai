@@ -11,9 +11,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "pnpm -r --if-present run start",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "sharp": "^0.34.4",
     "vite": "^5.4.21"
   }
