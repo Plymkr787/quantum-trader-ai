@@ -8,75 +8,85 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const Indicators = IDL.Record({
-  'ema' : IDL.Float64,
-  'rsi' : IDL.Float64,
-  'sma' : IDL.Float64,
-  'volatility' : IDL.Float64,
-  'macd' : IDL.Float64,
-  'sentiment' : IDL.Float64,
-  'momentum' : IDL.Float64,
+export const HealthStatus = IDL.Record({
+  'status' : IDL.Text,
+  'totalPredictions' : IDL.Nat,
+  'version' : IDL.Text,
 });
-export const PriceRecord = IDL.Record({
-  'volume' : IDL.Float64,
+export const HistoryRecord = IDL.Record({
+  'id' : IDL.Nat,
+  'timeframe' : IDL.Text,
   'timestamp' : IDL.Int,
-  'price' : IDL.Float64,
+  'signal' : IDL.Text,
+  'predictedChangePercent' : IDL.Float64,
+  'confidence' : IDL.Float64,
+  'symbol' : IDL.Text,
 });
-export const Prediction = IDL.Record({
-  'ema' : IDL.Float64,
+export const PredictionResult = IDL.Record({
   'rsi' : IDL.Float64,
   'sma' : IDL.Float64,
-  'prediction' : IDL.Float64,
+  'recentPrices' : IDL.Vec(IDL.Float64),
+  'currentPrice' : IDL.Float64,
+  'volatility' : IDL.Float64,
+  'sentimentLabel' : IDL.Text,
+  'timeframe' : IDL.Text,
+  'sentimentScore' : IDL.Float64,
   'macd' : IDL.Float64,
+  'momentum' : IDL.Float64,
   'signal' : IDL.Text,
+  'predictedChangePercent' : IDL.Float64,
   'confidence' : IDL.Float64,
+  'symbol' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
-  'getIndicators' : IDL.Func([IDL.Text], [Indicators], ['query']),
-  'getPriceHistory' : IDL.Func(
-      [IDL.Text, IDL.Nat],
-      [IDL.Vec(PriceRecord)],
-      ['query'],
-    ),
-  'predict' : IDL.Func([IDL.Text, IDL.Text], [Prediction], ['query']),
+  'clearHistory' : IDL.Func([], [], []),
+  'getHealth' : IDL.Func([], [HealthStatus], ['query']),
+  'getPredictionHistory' : IDL.Func([], [IDL.Vec(HistoryRecord)], ['query']),
+  'getSupportedSymbols' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+  'predict' : IDL.Func([IDL.Text, IDL.Text], [PredictionResult], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const Indicators = IDL.Record({
-    'ema' : IDL.Float64,
-    'rsi' : IDL.Float64,
-    'sma' : IDL.Float64,
-    'volatility' : IDL.Float64,
-    'macd' : IDL.Float64,
-    'sentiment' : IDL.Float64,
-    'momentum' : IDL.Float64,
+  const HealthStatus = IDL.Record({
+    'status' : IDL.Text,
+    'totalPredictions' : IDL.Nat,
+    'version' : IDL.Text,
   });
-  const PriceRecord = IDL.Record({
-    'volume' : IDL.Float64,
+  const HistoryRecord = IDL.Record({
+    'id' : IDL.Nat,
+    'timeframe' : IDL.Text,
     'timestamp' : IDL.Int,
-    'price' : IDL.Float64,
+    'signal' : IDL.Text,
+    'predictedChangePercent' : IDL.Float64,
+    'confidence' : IDL.Float64,
+    'symbol' : IDL.Text,
   });
-  const Prediction = IDL.Record({
-    'ema' : IDL.Float64,
+  const PredictionResult = IDL.Record({
     'rsi' : IDL.Float64,
     'sma' : IDL.Float64,
-    'prediction' : IDL.Float64,
+    'recentPrices' : IDL.Vec(IDL.Float64),
+    'currentPrice' : IDL.Float64,
+    'volatility' : IDL.Float64,
+    'sentimentLabel' : IDL.Text,
+    'timeframe' : IDL.Text,
+    'sentimentScore' : IDL.Float64,
     'macd' : IDL.Float64,
+    'momentum' : IDL.Float64,
     'signal' : IDL.Text,
+    'predictedChangePercent' : IDL.Float64,
     'confidence' : IDL.Float64,
+    'symbol' : IDL.Text,
   });
   
   return IDL.Service({
-    'getIndicators' : IDL.Func([IDL.Text], [Indicators], ['query']),
-    'getPriceHistory' : IDL.Func(
-        [IDL.Text, IDL.Nat],
-        [IDL.Vec(PriceRecord)],
-        ['query'],
-      ),
-    'predict' : IDL.Func([IDL.Text, IDL.Text], [Prediction], ['query']),
+    'clearHistory' : IDL.Func([], [], []),
+    'getHealth' : IDL.Func([], [HealthStatus], ['query']),
+    'getPredictionHistory' : IDL.Func([], [IDL.Vec(HistoryRecord)], ['query']),
+    'getSupportedSymbols' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'predict' : IDL.Func([IDL.Text, IDL.Text], [PredictionResult], []),
   });
 };
 

@@ -15,11 +15,6 @@ export default {
       },
     },
     extend: {
-      fontFamily: {
-        display: ['Orbitron', 'monospace'],
-        sans: ['Space Grotesk', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-      },
       colors: {
         border: "oklch(var(--border))",
         input: "oklch(var(--input))",
@@ -71,33 +66,29 @@ export default {
           border: "oklch(var(--sidebar-border))",
           ring: "oklch(var(--sidebar-ring))",
         },
-        // Quantum Trader custom tokens
         neon: {
-          cyan: "oklch(0.88 0.18 193)",
-          purple: "oklch(0.6 0.19 295)",
-          green: "oklch(0.75 0.19 145)",
-          red: "oklch(0.62 0.22 25)",
-          yellow: "oklch(0.85 0.18 85)",
+          cyan: "#00d4ff",
+          purple: "#7c3aed",
+          green: "#00ff88",
+          red: "#ff3366",
+          yellow: "#ffd700",
         },
-        surface: {
-          1: "oklch(0.1 0.008 264)",
-          2: "oklch(0.13 0.012 264)",
-          3: "oklch(0.17 0.014 264)",
-        },
+      },
+      fontFamily: {
+        display: ["Orbitron", "Space Grotesk", "monospace"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: ["Space Grotesk", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        xs: "2px",
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgba(0,0,0,0.05)",
-        "glow-cyan": "0 0 8px oklch(0.88 0.18 193 / 0.4), 0 0 24px oklch(0.88 0.18 193 / 0.15)",
-        "glow-cyan-lg": "0 0 12px oklch(0.88 0.18 193 / 0.6), 0 0 40px oklch(0.88 0.18 193 / 0.25)",
-        "glow-purple": "0 0 8px oklch(0.6 0.19 295 / 0.4), 0 0 24px oklch(0.6 0.19 295 / 0.15)",
-        "glow-green": "0 0 6px oklch(0.75 0.19 145 / 0.5), 0 0 16px oklch(0.75 0.19 145 / 0.2)",
-        "glow-red": "0 0 6px oklch(0.62 0.22 25 / 0.5), 0 0 16px oklch(0.62 0.22 25 / 0.2)",
+        "neon-cyan": "0 0 20px rgba(0, 212, 255, 0.4)",
+        "neon-green": "0 0 20px rgba(0, 255, 136, 0.4)",
+        "neon-red": "0 0 20px rgba(255, 51, 102, 0.4)",
       },
       keyframes: {
         "accordion-down": {
@@ -108,20 +99,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-slide-up": {
-          from: { opacity: "0", transform: "translateY(20px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "neural-pulse": {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "1" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-slide-up": "fade-slide-up 0.4s ease-out forwards",
-        "neural-pulse": "neural-pulse 1.2s ease-in-out infinite",
       },
     },
   },

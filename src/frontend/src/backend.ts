@@ -89,65 +89,102 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface PriceRecord {
-    volume: number;
+export interface HistoryRecord {
+    id: bigint;
+    timeframe: string;
     timestamp: bigint;
-    price: number;
-}
-export interface Indicators {
-    ema: number;
-    rsi: number;
-    sma: number;
-    volatility: number;
-    macd: number;
-    sentiment: number;
-    momentum: number;
-}
-export interface Prediction {
-    ema: number;
-    rsi: number;
-    sma: number;
-    prediction: number;
-    macd: number;
     signal: string;
+    predictedChangePercent: number;
     confidence: number;
+    symbol: string;
+}
+export interface HealthStatus {
+    status: string;
+    totalPredictions: bigint;
+    version: string;
+}
+export interface PredictionResult {
+    rsi: number;
+    sma: number;
+    recentPrices: Array<number>;
+    currentPrice: number;
+    volatility: number;
+    sentimentLabel: string;
+    timeframe: string;
+    sentimentScore: number;
+    macd: number;
+    momentum: number;
+    signal: string;
+    predictedChangePercent: number;
+    confidence: number;
+    symbol: string;
 }
 export interface backendInterface {
-    getIndicators(symbol: string): Promise<Indicators>;
-    getPriceHistory(symbol: string, limit: bigint): Promise<Array<PriceRecord>>;
-    predict(symbol: string, timeframe: string): Promise<Prediction>;
+    clearHistory(): Promise<void>;
+    getHealth(): Promise<HealthStatus>;
+    getPredictionHistory(): Promise<Array<HistoryRecord>>;
+    getSupportedSymbols(): Promise<Array<string>>;
+    predict(symbol: string, timeframe: string): Promise<PredictionResult>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async getIndicators(arg0: string): Promise<Indicators> {
+    async clearHistory(): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.getIndicators(arg0);
+                const result = await this.actor.clearHistory();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getIndicators(arg0);
+            const result = await this.actor.clearHistory();
             return result;
         }
     }
-    async getPriceHistory(arg0: string, arg1: bigint): Promise<Array<PriceRecord>> {
+    async getHealth(): Promise<HealthStatus> {
         if (this.processError) {
             try {
-                const result = await this.actor.getPriceHistory(arg0, arg1);
+                const result = await this.actor.getHealth();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getPriceHistory(arg0, arg1);
+            const result = await this.actor.getHealth();
             return result;
         }
     }
-    async predict(arg0: string, arg1: string): Promise<Prediction> {
+    async getPredictionHistory(): Promise<Array<HistoryRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPredictionHistory();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPredictionHistory();
+            return result;
+        }
+    }
+    async getSupportedSymbols(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSupportedSymbols();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSupportedSymbols();
+            return result;
+        }
+    }
+    async predict(arg0: string, arg1: string): Promise<PredictionResult> {
         if (this.processError) {
             try {
                 const result = await this.actor.predict(arg0, arg1);

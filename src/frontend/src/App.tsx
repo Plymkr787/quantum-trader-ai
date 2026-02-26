@@ -1,428 +1,279 @@
-import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle, Activity, Cpu, Globe, Heart } from "lucide-react";
-import { useActor } from "./hooks/useActor";
-import { PredictionForm } from "./components/quantum/PredictionForm";
-import { ResultCard } from "./components/quantum/ResultCard";
-import { IndicatorCards } from "./components/quantum/IndicatorCards";
-import { ChartView } from "./components/quantum/ChartView";
-import type { Prediction, PriceRecord, Indicators } from "./backend.d";
+import { useState } from "react";
+import { Cpu, Activity, AlertCircle, Heart } from "lucide-react";
+import PredictionForm from "./components/PredictionForm";
+import ResultCard from "./components/ResultCard";
+import ChartView from "./components/ChartView";
+import HistoryTable from "./components/HistoryTable";
+import { useGetHealth, usePredict } from "./hooks/useQueries";
+import type { PredictionResult } from "./backend.d";
 
-const DEFAULT_SYMBOL = "BTC/USDT";
-const DEFAULT_TIMEFRAME = "1h";
+function StatusBar() {
+  const { data: health, isLoading } = useGetHealth();
 
-// ── Decorative dots in header ─────────────────────────────────────────────────
-function PulseDots() {
   return (
-    <div className="flex items-center gap-1.5">
-      {[0, 300, 600].map((delay) => (
-        <div
-          key={delay}
-          className="w-2 h-2 rounded-full pulse-dot"
+    <div className="status-bar flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 mb-6">
+      {/* Live indicator */}
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block w-2 h-2 rounded-full"
           style={{
-            background: "oklch(0.88 0.18 193)",
-            boxShadow: "0 0 4px oklch(0.88 0.18 193 / 0.8)",
-            animationDelay: `${delay}ms`,
+            background: health ? "var(--signal-green)" : "var(--text-muted)",
+            boxShadow: health ? "0 0 6px rgba(0,255,136,0.8)" : "none",
+            animation: health ? "blink 2s ease-in-out infinite" : "none",
           }}
         />
-      ))}
-    </div>
-  );
-}
-
-// ── Section divider ────────────────────────────────────────────────────────────
-function SectionDivider({ label }: { label?: string }) {
-  return (
-    <div className="flex items-center gap-3 my-6">
-      <div
-        className="h-px flex-1"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, oklch(0.88 0.18 193 / 0.4) 40%, oklch(0.6 0.19 295 / 0.3) 60%, transparent)",
-        }}
-      />
-      {label && (
-        <span className="font-mono text-xs text-muted-foreground tracking-widest uppercase px-3">
-          {label}
+        <span
+          className="font-mono text-xs font-semibold uppercase tracking-widest"
+          style={{ color: health ? "var(--signal-green)" : "var(--text-muted)" }}
+        >
+          {isLoading ? "CONNECTING..." : health ? health.status.toUpperCase() : "OFFLINE"}
         </span>
+      </div>
+
+      {health && (
+        <>
+          <div className="flex items-center gap-1.5">
+            <Cpu size={11} style={{ color: "var(--text-muted)" }} />
+            <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+              v{health.version}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Activity size={11} style={{ color: "var(--neon-cyan)" }} />
+            <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+              <span style={{ color: "var(--neon-cyan)" }}>
+                {String(health.totalPredictions)}
+              </span>
+              {" "}predictions total
+            </span>
+          </div>
+        </>
       )}
-      <div
-        className="h-px flex-1"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, oklch(0.6 0.19 295 / 0.3) 40%, oklch(0.88 0.18 193 / 0.4) 60%, transparent)",
-        }}
-      />
+
+      {/* Right side — timestamp */}
+      <div className="ml-auto font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+        <span className="cursor-blink" style={{ color: "var(--neon-cyan)" }}>█</span>
+        {" "}NEURAL NET ONLINE
+      </div>
     </div>
   );
 }
 
-// ── Error card ─────────────────────────────────────────────────────────────────
-function ErrorCard({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+function ErrorBanner({ message }: { message: string }) {
   return (
     <div
-      className="rounded-sm p-4 flex items-start gap-3 animate-fade-slide-up"
+      className="flex items-start gap-3 px-4 py-3 rounded-lg mb-4 slide-in"
       style={{
-        background: "oklch(0.62 0.22 25 / 0.08)",
-        border: "1px solid oklch(0.62 0.22 25 / 0.5)",
-        boxShadow: "0 0 16px oklch(0.62 0.22 25 / 0.1)",
+        background: "rgba(255,51,102,0.07)",
+        border: "1px solid rgba(255,51,102,0.25)",
       }}
     >
-      <AlertTriangle
-        className="shrink-0 mt-0.5"
-        style={{ color: "oklch(0.62 0.22 25)", width: 16, height: 16 }}
-      />
-      <div className="flex-1">
-        <div className="font-mono text-xs font-semibold mb-1" style={{ color: "oklch(0.62 0.22 25)" }}>
-          Neural Analysis Error
+      <AlertCircle size={15} style={{ color: "var(--signal-red)", flexShrink: 0, marginTop: "1px" }} />
+      <div>
+        <div
+          className="text-xs font-bold uppercase tracking-wider mb-0.5"
+          style={{ color: "var(--signal-red)" }}
+        >
+          Prediction Error
         </div>
-        <div className="font-mono text-xs text-muted-foreground">{message}</div>
-      </div>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
-
-// ── Status bar ─────────────────────────────────────────────────────────────────
-function StatusBar({ symbol, loading }: { symbol: string; loading: boolean }) {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-
-  return (
-    <div
-      className="flex items-center justify-between px-4 py-1.5 border-b"
-      style={{
-        background: "oklch(0.08 0.007 264)",
-        borderColor: "oklch(0.18 0.012 264)",
-      }}
-    >
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: loading ? "oklch(0.85 0.18 85)" : "oklch(0.75 0.19 145)",
-              boxShadow: loading
-                ? "0 0 4px oklch(0.85 0.18 85 / 0.8)"
-                : "0 0 4px oklch(0.75 0.19 145 / 0.8)",
-              animation: loading ? "pulse-dot 0.8s ease-in-out infinite" : undefined,
-            }}
-          />
-          <span className="font-mono text-xs" style={{ color: "oklch(0.55 0.015 240)" }}>
-            {loading ? "PROCESSING" : "LIVE"}
-          </span>
+        <div className="text-sm" style={{ color: "rgba(255,80,100,0.8)" }}>
+          {message}
         </div>
-        <span className="font-mono text-xs" style={{ color: "oklch(0.88 0.18 193 / 0.7)" }}>
-          {symbol}
-        </span>
-      </div>
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
-          <Globe style={{ width: 10, height: 10, color: "oklch(0.55 0.015 240)" }} />
-          <span className="font-mono text-xs" style={{ color: "oklch(0.45 0.015 240)" }}>
-            ICP Mainnet
-          </span>
-        </div>
-        <span className="font-mono text-xs" style={{ color: "oklch(0.45 0.015 240)" }}>
-          {timeStr}
-        </span>
       </div>
     </div>
   );
 }
 
 export default function App() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const [result, setResult] = useState<PredictionResult | null>(null);
+  const predictMutation = usePredict();
 
-  const [symbol, setSymbol] = useState(DEFAULT_SYMBOL);
-  const [timeframe, setTimeframe] = useState(DEFAULT_TIMEFRAME);
-  const [loading, setLoading] = useState(false);
-  const [chartLoading, setChartLoading] = useState(true);
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
-  const [priceHistory, setPriceHistory] = useState<PriceRecord[]>([]);
-  const [indicators, setIndicators] = useState<Indicators | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch initial price history
-  const fetchPriceHistory = useCallback(
-    async (sym: string) => {
-      if (!actor) return;
-      setChartLoading(true);
-      try {
-        const history = await actor.getPriceHistory(sym, BigInt(30));
-        setPriceHistory(history);
-      } catch (err) {
-        console.error("Failed to fetch price history:", err);
-      } finally {
-        setChartLoading(false);
-      }
-    },
-    [actor]
-  );
-
-  // On actor ready, fetch initial data
-  useEffect(() => {
-    if (actor && !actorFetching) {
-      fetchPriceHistory(DEFAULT_SYMBOL);
-    }
-  }, [actor, actorFetching, fetchPriceHistory]);
-
-  // Analyze market — run predict + getIndicators in parallel
-  const handleAnalyze = useCallback(async () => {
-    if (!actor || !symbol.trim()) return;
-    setLoading(true);
-    setError(null);
-    setPrediction(null);
-    setIndicators(null);
-
+  async function handlePredict(symbol: string, timeframe: string) {
     try {
-      const [predResult, indicResult, histResult] = await Promise.all([
-        actor.predict(symbol.trim(), timeframe),
-        actor.getIndicators(symbol.trim()),
-        actor.getPriceHistory(symbol.trim(), BigInt(30)),
-      ]);
-
-      setPrediction(predResult);
-      setIndicators(indicResult);
-      setPriceHistory(histResult);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(message);
-    } finally {
-      setLoading(false);
+      const data = await predictMutation.mutateAsync({ symbol, timeframe });
+      setResult(data);
+    } catch {
+      // error is available via predictMutation.error
     }
-  }, [actor, symbol, timeframe]);
-
-  const showResults = !!(prediction && indicators);
+  }
 
   return (
-    <div
-      className="min-h-screen flex flex-col scanline"
-      style={{ background: "oklch(0.07 0.006 264)" }}
-    >
-      {/* Animated grid background */}
-      <div
-        className="fixed inset-0 pointer-events-none bg-grid opacity-60"
-        style={{ zIndex: 0 }}
-      />
-
-      {/* Radial glow center */}
-      <div
-        className="fixed pointer-events-none"
-        style={{
-          inset: 0,
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% 0%, oklch(0.88 0.18 193 / 0.04) 0%, transparent 70%)",
-          zIndex: 0,
-        }}
-      />
-
-      <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Status bar */}
-        <StatusBar symbol={symbol} loading={loading || actorFetching} />
-
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <header className="px-4 sm:px-6 pt-8 pb-6">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                {/* Eyebrow */}
-                <div className="flex items-center gap-2 mb-2">
-                  <PulseDots />
-                  <span
-                    className="font-mono text-xs tracking-widest uppercase"
-                    style={{ color: "oklch(0.88 0.18 193 / 0.6)" }}
-                  >
-                    v2.4.1 · Neural Engine Active
-                  </span>
-                </div>
-
-                {/* Main title */}
-                <h1
-                  className="font-display text-2xl sm:text-3xl md:text-4xl font-black tracking-widest uppercase title-flicker"
-                  style={{
-                    color: "oklch(0.88 0.18 193)",
-                    textShadow:
-                      "0 0 12px oklch(0.88 0.18 193 / 0.8), 0 0 32px oklch(0.88 0.18 193 / 0.4), 0 0 60px oklch(0.88 0.18 193 / 0.15)",
-                  }}
-                >
-                  Quantum Trader AI
-                </h1>
-
-                {/* Subtitle */}
-                <p
-                  className="font-mono text-xs sm:text-sm mt-1.5 tracking-widest"
-                  style={{ color: "oklch(0.6 0.19 295)" }}
-                >
-                  Neural Market Intelligence Engine
-                </p>
-              </div>
-
-              {/* Right: system stats */}
-              <div
-                className="flex items-center gap-4 px-4 py-3 rounded-sm border self-start"
-                style={{
-                  background: "oklch(0.1 0.008 264)",
-                  borderColor: "oklch(0.22 0.015 264)",
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Cpu style={{ width: 12, height: 12, color: "oklch(0.88 0.18 193)" }} />
-                  <div>
-                    <div className="font-mono text-xs text-muted-foreground">Neural Cores</div>
-                    <div
-                      className="font-mono text-sm font-bold"
-                      style={{ color: "oklch(0.88 0.18 193)" }}
-                    >
-                      128
-                    </div>
-                  </div>
-                </div>
-                <div className="w-px h-8" style={{ background: "oklch(0.22 0.015 264)" }} />
-                <div className="flex items-center gap-1.5">
-                  <Activity style={{ width: 12, height: 12, color: "oklch(0.6 0.19 295)" }} />
-                  <div>
-                    <div className="font-mono text-xs text-muted-foreground">Model</div>
-                    <div
-                      className="font-mono text-sm font-bold"
-                      style={{ color: "oklch(0.6 0.19 295)" }}
-                    >
-                      QTv4
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <div className="relative min-h-screen">
+      {/* Main content above overlays */}
+      <div className="relative" style={{ zIndex: 10 }}>
+        {/* ─── Header ─── */}
+        <header className="px-4 sm:px-6 lg:px-8 pt-8 pb-4 text-center">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(124,58,237,0.2))",
+                border: "1px solid rgba(0,212,255,0.3)",
+              }}
+            >
+              <Cpu size={16} style={{ color: "var(--neon-cyan)" }} />
             </div>
+            <h1
+              className="glow-title text-2xl sm:text-3xl font-bold text-white"
+              style={{ fontFamily: "Orbitron, Space Grotesk, monospace" }}
+            >
+              QUANTUM TRADER AI
+            </h1>
+          </div>
+          <p
+            className="font-mono text-xs sm:text-sm tracking-widest"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.2em" }}
+          >
+            NEURAL MARKET INTELLIGENCE ENGINE v2.0
+          </p>
+
+          {/* Decorative divider */}
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <div
+              className="h-px flex-1 max-w-24"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent, rgba(0,212,255,0.35))",
+              }}
+            />
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: "var(--neon-cyan)", boxShadow: "0 0 8px rgba(0,212,255,0.8)" }}
+            />
+            <div
+              className="h-px flex-1 max-w-24"
+              style={{
+                background:
+                  "linear-gradient(270deg, transparent, rgba(0,212,255,0.35))",
+              }}
+            />
           </div>
         </header>
 
-        {/* ── Main content ─────────────────────────────────────────────── */}
-        <main className="flex-1 px-4 sm:px-6 pb-8">
-          <div className="max-w-5xl mx-auto space-y-0">
+        {/* ─── Main layout ─── */}
+        <main className="px-4 sm:px-6 lg:px-8 pb-12 max-w-7xl mx-auto">
+          {/* Status bar */}
+          <StatusBar />
 
-            {/* Prediction form */}
-            <section>
+          {/* Error banner */}
+          {predictMutation.isError && predictMutation.error && (
+            <ErrorBanner message={predictMutation.error.message} />
+          )}
+
+          {/* Two-column desktop layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* ─── Left Column ─── */}
+            <div className="flex flex-col gap-5">
               <PredictionForm
-                symbol={symbol}
-                timeframe={timeframe}
-                loading={loading}
-                onSymbolChange={setSymbol}
-                onTimeframeChange={setTimeframe}
-                onAnalyze={handleAnalyze}
+                onPredict={handlePredict}
+                isLoading={predictMutation.isPending}
               />
-            </section>
+              <HistoryTable />
+            </div>
 
-            {/* Error */}
-            {error && (
-              <div className="mt-4">
-                <ErrorCard message={error} onDismiss={() => setError(null)} />
-              </div>
-            )}
-
-            <SectionDivider label="Price Chart" />
-
-            {/* Chart */}
-            <section>
-              <ChartView
-                priceHistory={priceHistory}
-                symbol={symbol}
-                loading={chartLoading && priceHistory.length === 0}
-              />
-            </section>
-
-            {/* Show results or empty state */}
-            {showResults ? (
-              <>
-                <SectionDivider label="Analysis Results" />
-
-                {/* Results grid */}
-                <section
-                  className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4"
-                >
-                  <ResultCard prediction={prediction!} symbol={symbol} />
-                  <IndicatorCards indicators={indicators!} />
-                </section>
-              </>
-            ) : (
-              !loading && (
+            {/* ─── Right Column ─── */}
+            <div className="flex flex-col gap-5">
+              {result ? (
                 <>
-                  <SectionDivider />
-                  {/* Empty state / onboarding */}
-                  <div
-                    className="text-center py-12 px-6 rounded-sm border"
-                    style={{
-                      background: "oklch(0.09 0.007 264)",
-                      borderColor: "oklch(0.18 0.012 264)",
-                      borderStyle: "dashed",
-                    }}
-                  >
-                    <div
-                      className="font-display text-3xl mb-3"
-                      style={{
-                        color: "oklch(0.88 0.18 193 / 0.2)",
-                        textShadow: "none",
-                      }}
-                    >
-                      ◈
-                    </div>
-                    <div
-                      className="font-display text-sm tracking-widest uppercase mb-2"
-                      style={{ color: "oklch(0.88 0.18 193 / 0.4)" }}
-                    >
-                      Awaiting Neural Analysis
-                    </div>
-                    <p className="font-mono text-xs text-muted-foreground max-w-xs mx-auto">
-                      Enter a symbol and click "Analyze Market" to run the neural prediction engine.
-                    </p>
-                  </div>
+                  <ResultCard result={result} />
+                  <ChartView result={result} />
                 </>
-              )
-            )}
+              ) : (
+                <EmptyRightPanel isPending={predictMutation.isPending} />
+              )}
+            </div>
           </div>
         </main>
 
-        {/* ── Footer ──────────────────────────────────────────────────── */}
+        {/* ─── Footer ─── */}
         <footer
-          className="px-4 sm:px-6 py-4 border-t"
-          style={{ borderColor: "oklch(0.18 0.012 264)" }}
+          className="text-center py-6 px-4"
+          style={{ borderTop: "1px solid rgba(0,212,255,0.07)" }}
         >
-          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="font-mono text-xs" style={{ color: "oklch(0.35 0.012 240)" }}>
-              Quantum Trader AI · Neural Market Intelligence Engine
-            </div>
-            <div
-              className="font-mono text-xs flex items-center gap-1"
-              style={{ color: "oklch(0.35 0.012 240)" }}
+          <p
+            className="font-mono text-xs flex items-center justify-center gap-1.5"
+            style={{ color: "var(--text-muted)" }}
+          >
+            © 2026. Built with
+            <Heart size={11} style={{ color: "var(--neon-cyan)", fill: "var(--neon-cyan)" }} />
+            using{" "}
+            <a
+              href="https://caffeine.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors"
+              style={{ color: "var(--neon-cyan)" }}
             >
-              © 2026. Built with{" "}
-              <Heart
-                className="inline"
-                style={{ width: 10, height: 10, color: "oklch(0.62 0.22 25)", fill: "oklch(0.62 0.22 25)" }}
-              />{" "}
-              using{" "}
-              <a
-                href="https://caffeine.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-colors hover:text-neon-cyan"
-                style={{ color: "oklch(0.88 0.18 193 / 0.5)" }}
-              >
-                caffeine.ai
-              </a>
-            </div>
-          </div>
+              caffeine.ai
+            </a>
+          </p>
         </footer>
       </div>
+    </div>
+  );
+}
+
+function EmptyRightPanel({ isPending }: { isPending: boolean }) {
+  return (
+    <div
+      className="glass-card flex flex-col items-center justify-center py-16 px-8 text-center fade-in"
+      style={{ minHeight: "360px" }}
+    >
+      {isPending ? (
+        <>
+          <div
+            className="w-12 h-12 rounded-full border-2 spin mb-5"
+            style={{
+              borderColor: "rgba(0,212,255,0.2)",
+              borderTopColor: "var(--neon-cyan)",
+              boxShadow: "0 0 20px rgba(0,212,255,0.2)",
+            }}
+          />
+          <p
+            className="font-mono text-sm font-semibold tracking-widest"
+            style={{ color: "var(--neon-cyan)" }}
+          >
+            ANALYZING MARKET DATA...
+          </p>
+          <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+            Neural network processing signals
+          </p>
+        </>
+      ) : (
+        <>
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+            style={{
+              background: "rgba(0,212,255,0.05)",
+              border: "1px solid rgba(0,212,255,0.12)",
+            }}
+          >
+            <Activity size={28} style={{ color: "rgba(0,212,255,0.4)" }} />
+          </div>
+          <p
+            className="font-mono text-sm font-semibold"
+            style={{ color: "var(--text-muted)" }}
+          >
+            AWAITING PREDICTION
+          </p>
+          <p className="text-xs mt-2 max-w-xs" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
+            Select an asset and timeframe, then run a prediction to see AI analysis here
+          </p>
+          <div className="flex items-center gap-1 mt-6">
+            {(["dot-a", "dot-b", "dot-c"] as const).map((id, i) => (
+              <div
+                key={id}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: "rgba(0,212,255,0.25)",
+                  animation: `blink ${1 + i * 0.3}s ease-in-out infinite`,
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

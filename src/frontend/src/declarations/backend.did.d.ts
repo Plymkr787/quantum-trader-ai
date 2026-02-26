@@ -10,33 +10,42 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Indicators {
-  'ema' : number,
-  'rsi' : number,
-  'sma' : number,
-  'volatility' : number,
-  'macd' : number,
-  'sentiment' : number,
-  'momentum' : number,
+export interface HealthStatus {
+  'status' : string,
+  'totalPredictions' : bigint,
+  'version' : string,
 }
-export interface Prediction {
-  'ema' : number,
-  'rsi' : number,
-  'sma' : number,
-  'prediction' : number,
-  'macd' : number,
-  'signal' : string,
-  'confidence' : number,
-}
-export interface PriceRecord {
-  'volume' : number,
+export interface HistoryRecord {
+  'id' : bigint,
+  'timeframe' : string,
   'timestamp' : bigint,
-  'price' : number,
+  'signal' : string,
+  'predictedChangePercent' : number,
+  'confidence' : number,
+  'symbol' : string,
+}
+export interface PredictionResult {
+  'rsi' : number,
+  'sma' : number,
+  'recentPrices' : Array<number>,
+  'currentPrice' : number,
+  'volatility' : number,
+  'sentimentLabel' : string,
+  'timeframe' : string,
+  'sentimentScore' : number,
+  'macd' : number,
+  'momentum' : number,
+  'signal' : string,
+  'predictedChangePercent' : number,
+  'confidence' : number,
+  'symbol' : string,
 }
 export interface _SERVICE {
-  'getIndicators' : ActorMethod<[string], Indicators>,
-  'getPriceHistory' : ActorMethod<[string, bigint], Array<PriceRecord>>,
-  'predict' : ActorMethod<[string, string], Prediction>,
+  'clearHistory' : ActorMethod<[], undefined>,
+  'getHealth' : ActorMethod<[], HealthStatus>,
+  'getPredictionHistory' : ActorMethod<[], Array<HistoryRecord>>,
+  'getSupportedSymbols' : ActorMethod<[], Array<string>>,
+  'predict' : ActorMethod<[string, string], PredictionResult>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
